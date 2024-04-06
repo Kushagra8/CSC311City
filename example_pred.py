@@ -10,6 +10,8 @@ Here's an example of how your script may be used in our test file:
 
     from example_pred import predict_all
     predict_all("example_test_set.csv")
+
+Kush
 """
 
 # basic python imports are permitted
