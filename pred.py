@@ -4,6 +4,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 
+###
+# NEED TO EDIT TO MAKE IT WORK #
+###
+
 # Load data
 data = pd.read_csv("clean_dataset.csv")
 
