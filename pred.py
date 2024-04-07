@@ -33,6 +33,11 @@ class MLP:
         self.weights_hidden_output = np.random.randn(hidden_dim, output_dim)
         self.bias_hidden_output = np.zeros(output_dim)
     
+    '''
+        def relu(self, x):
+        return np.maximum(0, x)
+    '''
+    
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
     
