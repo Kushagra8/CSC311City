@@ -122,9 +122,10 @@ def retreive_data():
 
     data = pd.read_csv(data_set)
 
-    all_possible_q1_q4_categories = [-1, 1, 2, 3, 4, 5]
-    all_possible_q6_ranks = [-1, 1, 2, 3, 4, 5, 6]
+    q1_q4_categories = [-1, 1, 2, 3, 4, 5]
+    q6_ranks = q1_q4_categories + [6]
 
+    # data set splits
     n_train = 1200
 
     # Apply preprocessing to numeric fields to columns Q 7,8,9
@@ -148,19 +149,19 @@ def retreive_data():
     for i in range(1, 7):
         col_name = f"rank_{i}"
         data[col_name] = data["Q6"].apply(lambda l: find_area_at_rank(l, i))
-        indicators = create_indicators_with_all_categories(data[col_name], col_name, all_possible_q6_ranks)
+        indicators = create_indicators_with_all_categories(data[col_name], col_name, q6_ranks)
         data = pd.concat([data, indicators], axis=1)
     data.drop("Q6", axis=1, inplace=True)
 
     # for Q 1,2,3,4, category indicators concatenates them with Data, and 
     #  deletes original columns.
     for col in ["Q1", "Q2", "Q3", "Q4"]:
-        indicators = create_indicators_with_all_categories(data[col], col, all_possible_q1_q4_categories)
+        indicators = create_indicators_with_all_categories(data[col], col, q1_q4_categories)
         data = pd.concat([data, indicators], axis=1)
         data.drop(col, axis=1, inplace=True)
 
     # Create multi-category indicators
-    for cat in ["Partner", "Friends", "Siblings", "Co-worker"]:
+    for cat in ["Partner", "Friend", "Sibling", "Co-worker"]:
         cat_name = f"Q5_{cat}"
         data[cat_name] = data["Q5"].apply(lambda s: cat_in_s(s, cat))
     # Remove the original column "Q5"
@@ -177,14 +178,16 @@ def retreive_data():
     # Shuffle Data's rows randomly
     data = data.sample(frac=1, random_state=42)
 
-    #print(list(data.columns))
+    # Extract x features and y labels
     x = data.drop("Label", axis=1).values
     y = pd.get_dummies(data["Label"]).values
+
+    # Splitting data into train & test set
     x_test = x[n_train:]
     y_test = y[n_train:]
     x_train = x[:n_train]
     y_train = y[:n_train]
-    
+
     return x_train, y_train, x_test, y_test
 
 
@@ -195,6 +198,53 @@ It's designed to be used for obtaining data from a file without labels for
 inference or prediction tasks.
 '''
 
+def get_data(file_name):
+
+    data = pd.read_csv(file_name)
+
+    q1_q4_categories = [-1, 1, 2, 3, 4, 5]
+    q6_ranks = q1_q4_categories + [6]
+
+    # columns in numeric type, filled missing values with 0's
+    for col in ['Q7', 'Q8', 'Q9']:
+        data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0)
+
+    # normaliza
+    for col in ['Q7', 'Q8', 'Q9']:
+        data[col] = (data[col] - data[col].min()) / (data[col].max() - data[col].min())
+
+    # Convert columns Q1-Q4 to their first nums
+    for col in ['Q1', 'Q2', 'Q3', 'Q4']:
+        data[col] = data[col].apply(retreive_number)
+
+    # Process Q6 to create area rank categories
+    data['Q6'] = data['Q6'].apply(retreive_number_list)
+
+    for i in range(1, 7):
+        col_name = f"rank_{i}"
+        data[col_name] = data["Q6"].apply(lambda l: find_area_at_rank(l, i))
+        indicators = create_indicators_with_all_categories(data[col_name], col_name, q6_ranks)
+        data = pd.concat([data, indicators], axis=1)
+    data.drop("Q6", axis=1, inplace=True)
+
+    for col in ["Q1", "Q2", "Q3", "Q4"]:
+        indicators = create_indicators_with_all_categories(data[col], col, q1_q4_categories)
+        data = pd.concat([data, indicators], axis=1)
+        data.drop(col, axis=1, inplace=True)
+
+    # Create multi-category indicators
+    for cat in ["Partner", "Friend", "Sibling", "Co-worker"]:
+        cat_name = f"Q5_{cat}"
+        data[cat_name] = data["Q5"].apply(lambda s: cat_in_s(s, cat))
+    data.drop("Q5", axis=1, inplace=True)
+
+    selected_columns = []
+    for col in data.columns:
+        if col.startswith(('Q1_', 'Q2_', 'Q3_', 'Q4_', 'Q5', 'Q7', 'Q8', 'Q9', 'rank_')):
+            selected_columns.append(col)
+    data = data[selected_columns]
+    data = data.sample(frac=1, random_state=42)
+    return data.values
 
 '''
 Main Function Call: The last line of the code calls the retreive_file_data 
@@ -202,6 +252,7 @@ function with the path to a CSV file as an argument, which triggers the
 data preprocessing steps and returns the processed data.
 '''
 
+get_data("./clean_dataset.csv")
 
 '''
 Overall, this code prepares a dataset for training a machine learning model 
