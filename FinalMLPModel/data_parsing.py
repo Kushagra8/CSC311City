@@ -1,12 +1,17 @@
 import re
 import pandas as pd
+# retreive - get
+# data - file
+# indicator - dummy
+# indicators - dummies
+# data.drop(col, axis=1, inplace=True) - del data[col]
 
 '''
 This code snippet reads a dataset from a CSV file, preprocesses it, 
 and prepares the data for training a machine learning model.
 '''
 
-file_name = "clean_dataset.csv"
+data_set = "clean_dataset.csv"
 
 # initialize the internal random number generator
 random_state = 42
@@ -14,10 +19,10 @@ random_state = 42
 '''
 Preprocessing Functions: Several functions (to_numeric, retreive_number_list, 
 retreive_number_list_clean, retreive_number, find_area_at_rank, cat_in_s, 
-create_dummies_with_all_categories, normalize_column) are defined to 
+create_indicators_with_all_categories, normalize_column) are defined to 
 preprocess the data. These functions handle tasks such as converting 
 strings to numeric values, extracting numbers from strings, creating 
-dummy variables for categorical features, and normalizing numeric columns.
+indicator variables for categorical features, and normalizing numeric columns.
 '''
 
 def find_area_at_rank(l, i):
@@ -80,23 +85,23 @@ def retreive_number(s):
     else:
         return -1
 
-def create_dummies_with_all_categories(series, prefix, all_categories):
+def create_indicators_with_all_categories(series, prefix, all_categories):
     '''
-    create_dummies_with_all_categories creates dummy variables for the given 
+    create_indicators_with_all_categories creates indicator variables for the given 
     series with the specified prefix and all the possible categories.
     '''
-    # Get dummy variables for the series with the specified prefix
-    dummies = pd.get_dummies(series, prefix=prefix)
+    # retreive indicator variables for the series with the specified prefix
+    indicators = pd.get_dummies(series, prefix=prefix)
     
     # Generate column names for all possible categories
     expected_columns = []
     for cat in all_categories:
         expected_columns.append(f"{prefix}_{cat}")
     
-    # Reindex the dummy variables with all possible categories
-    dummies = dummies.reindex(columns=expected_columns, fill_value=0)
+    # Reindex the indicator variables with all possible categories
+    indicators = indicators.reindex(columns=expected_columns, fill_value=0)
     
-    return dummies
+    return indicators
 
 def normalize_column(data, column_name):
     '''
@@ -106,13 +111,81 @@ def normalize_column(data, column_name):
     max_val = data[column_name].max()
     data[column_name] = (data[column_name] - min_val) / (max_val - min_val)
 
-
 '''
 retreive_data Function: This function reads the CSV file, applies preprocessing 
-to the numeric fields, converts categorical features into dummy variables, 
+to the numeric fields, converts categorical features into indicator variables, 
 and prepares the features (x) and labels (y) for training the model.
 It also splits the data into training and testing sets.
 '''
+
+def retreive_data():
+
+    data = pd.read_csv(data_set)
+
+    all_possible_q1_q4_categories = [-1, 1, 2, 3, 4, 5]
+    all_possible_q6_ranks = [-1, 1, 2, 3, 4, 5, 6]
+
+    n_train = 1200
+
+    # Apply preprocessing to numeric fields to columns Q 7,8,9
+    for col in ['Q7', 'Q8', 'Q9']:
+        data[col] = data[col].apply(to_numeric).fillna(0)
+
+    # Normalize Q 7,8,9 columns in DataFrame
+    for col in ['Q7', 'Q8', 'Q9']:
+        normalize_column(data, col)
+
+    # Apply retreive_number function to columns Q 1,2,3,4
+    for col in ['Q1', 'Q2', 'Q3', 'Q4']:
+        data[col] = data[col].apply(retreive_number)
+
+    # extract list of int from the strings of each element in Q6
+    #  result stored back into Q6, replacing original string vals
+    #  with int lists.
+    data['Q6'] = data['Q6'].apply(retreive_number_list)
+
+    # generates indicator variables for each rank & merges to data
+    for i in range(1, 7):
+        col_name = f"rank_{i}"
+        data[col_name] = data["Q6"].apply(lambda l: find_area_at_rank(l, i))
+        indicators = create_indicators_with_all_categories(data[col_name], col_name, all_possible_q6_ranks)
+        data = pd.concat([data, indicators], axis=1)
+    data.drop("Q6", axis=1, inplace=True)
+
+    # for Q 1,2,3,4, category indicators concatenates them with Data, and 
+    #  deletes original columns.
+    for col in ["Q1", "Q2", "Q3", "Q4"]:
+        indicators = create_indicators_with_all_categories(data[col], col, all_possible_q1_q4_categories)
+        data = pd.concat([data, indicators], axis=1)
+        data.drop(col, axis=1, inplace=True)
+
+    # Create multi-category indicators
+    for cat in ["Partner", "Friends", "Siblings", "Co-worker"]:
+        cat_name = f"Q5_{cat}"
+        data[cat_name] = data["Q5"].apply(lambda s: cat_in_s(s, cat))
+    # Remove the original column "Q5"
+    data.drop("Q5", axis=1, inplace=True)
+
+    # adds Label to the col specified elbow and then mixes order randomly
+    selected_columns = []
+    for col in data.columns:
+        if col.startswith(('Q1_', 'Q2_', 'Q3_', 'Q4_', 'Q5', 'Q7', 'Q8', 'Q9', 'rank_')):
+            selected_columns.append(col)
+    selected_columns.append("Label")
+    data = data[selected_columns]
+
+    # Shuffle Data's rows randomly
+    data = data.sample(frac=1, random_state=42)
+
+    #print(list(data.columns))
+    x = data.drop("Label", axis=1).values
+    y = pd.get_dummies(data["Label"]).values
+    x_test = x[n_train:]
+    y_test = y[n_train:]
+    x_train = x[:n_train]
+    y_train = y[:n_train]
+    
+    return x_train, y_train, x_test, y_test
 
 
 '''
