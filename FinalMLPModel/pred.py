@@ -1,48 +1,60 @@
+import pandas as pd
 import numpy as np
 from data_parsing import retreive_file_data, retreive_data
 
 LABELS = ["Dubai", "Rio de Janeiro", "New York City", "Paris"]
 
-class MLPModel:
-    def __init__(self, num_features=138, hidden_units=(300, 300, 300, 300), num_classes=4, activation="logistic"):
+class MultiLayerPerceptron:
+    def __init__(self, num_features=138, num_hidden=(300, 300, 300, 300), num_classes=4, activation="logistic"):
         """
-        Initialize the weights and biases of this multi-layer perceptron (MLP) model.
+        Initialize the weights and biases of this multi-layer perceptron.
         """
-        # Model configuration
         self.num_features = num_features
-        self.hidden_units = hidden_units
+        self.num_hidden = num_hidden
         self.num_classes = num_classes
+        self.num_layers = len(num_hidden) + 1
         self.activation = activation
 
-        # Initialize weight matrices for each layer
-        self.layer_weights = []
+        # Initialize weights for all layers
+        self.layer_matrices = self._initialize_weights()
 
-        # Add weights for the input layer
-        self.layer_weights.append(np.zeros((self.hidden_units[0], self.num_features)))
+    def _initialize_weights(self):
+        """
+        Initialize the weight matrices for all layers.
+        """
+        layer_matrices = []
+
+        # Add weights for input layer
+        input_layer_weights = np.zeros((self.num_hidden[0], self.num_features))
+        layer_matrices.append(input_layer_weights)
 
         # Add weights for hidden layers
-        for i in range(len(self.hidden_units) - 1):
-            self.layer_weights.append(np.zeros((self.hidden_units[i+1], self.hidden_units[i])))
+        for hidden_layer_index in range(len(self.num_hidden) - 1):
+            hidden_layer_weights = np.zeros((self.num_hidden[hidden_layer_index + 1], self.num_hidden[hidden_layer_index]))
+            layer_matrices.append(hidden_layer_weights)
 
-        # Add weights for the output layer
-        self.layer_weights.append(np.zeros((self.num_classes, self.hidden_units[-1])))
+        # Add weights for output layer
+        output_layer_weights = np.zeros((self.num_classes, self.num_hidden[-1]))
+        layer_matrices.append(output_layer_weights)
 
-        # Read weights from files and set them into matrices
-        # This part is omitted for clarity
+        # Read weights from files and set into matrices
+        self._read_weights_from_files(layer_matrices)
 
+        return layer_matrices
+    
     def sigmoid_activation(self, z):
         """
-        Compute the sigmoid activation function for vector z or row-wise for a matrix z.
+        Compute sigmoid activation function for vector z or row-wise for a matrix z.
         """
         return 1 / (1 + np.exp(-z))
 
     def forward(self, X):
         """
-        Compute the forward pass to produce predictions for inputs.
+        Compute forward pass to produce predictions for inputs.
         """
         activation_fn = self.sigmoid_activation if self.activation == "logistic" else None
 
-        # Forward pass through the network layers
+        # Forward pass through network layers
         value = X
         for weights in self.layer_weights:
             value = activation_fn(weights @ value)
@@ -61,8 +73,8 @@ def run_tests(model):
         features = np.array(x_train[i], dtype=float).reshape(-1, 1)
         true_label = LABELS[np.argmax(y_train[i])]
 
-        prediction = model.forward(features)
-        predicted_label = LABELS[np.argmax(prediction)]
+        model_pred = model.forward(features)
+        predicted_label = LABELS[np.argmax(model_pred)]
 
         if true_label == predicted_label:
             num_correct += 1
@@ -88,31 +100,32 @@ def make_prediction(x):
     """
     x = np.array(x, dtype=float).reshape(-1, 1)
     model = load_model()
-    prediction = model.forward(x)
-    predicted_label = LABELS[np.argmax(prediction)]
+    model_pred = model.forward(x)
+    predicted_label = LABELS[np.argmax(model_pred)]
 
     return predicted_label
 
-def predict_all_samples(filename):
+def predict_all(filename):
     """
-    Make predictions for all data samples in the specified file.
+    Make predictions for all data samples in specified file.
     """
     model = load_model()
     features = retreive_data(filename)
 
-    predictions = []
+    model_preds = []
     for data_point in features:
         features = np.array(data_point, dtype=float).reshape(-1, 1)
         pred = model.forward(features)
         predicted_label = LABELS[np.argmax(pred)]
-        predictions.append(predicted_label)
+        model_preds.append(predicted_label)
 
-    return predictions
-
+    return model_preds
+'''
 # Example usage
-print(predict_all_samples("./clean_dataset.csv"))
-x_train, _, _, _ = retreive_file_data()
+print(predict_all("./clean_dataset.csv"))
+x_train, y_train, x_test, y_test = retreive_file_data()
 print(make_prediction(x_train[0]))
 
 model = load_model()
 run_tests(model)
+'''
