@@ -65,9 +65,7 @@ class MLPModel:
 
         assert len(self.layer_weights) >= 2
 
-        # Check if the number of features in input X matches the expected number of features
-        assert X.shape[1] == self.num_features, "Number of features in input does not match model's num_features."
-
+        # SIZE ERROR
         # First Layer
         value = act(self.layer_weights[0] @ X.T)
 
