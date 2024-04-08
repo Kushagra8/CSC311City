@@ -1,5 +1,7 @@
 import numpy as np
-from data_parsing import get_data, retreive_data
+from data_parsing import retreive_file_data, retreive_data
+
+LABELS = ["Dubai", "Rio de Janeiro", "New York City", "Paris"]
 
 class MLPModel:
     def __init__(self, num_features=138, hidden_units=(300, 300, 300, 300), num_classes=4, activation="logistic"):
@@ -49,21 +51,18 @@ class MLPModel:
 
 def run_tests(model):
     # Get training data from data_parsing module
-    x_train, y_train, _, _ = get_data()
+    x_train, y_train, _, _ = retreive_file_data()
 
-    # Mapping indices to labels
-    labels = ["Dubai", "Rio de Janeiro", "New York City", "Paris"]
-    
     num_correct = 0
     total_samples = len(x_train)
     
     # Loop over training samples
     for i in range(total_samples):
         features = np.array(x_train[i], dtype=float).reshape(-1, 1)
-        true_label = labels[np.argmax(y_train[i])]
+        true_label = LABELS[np.argmax(y_train[i])]
 
         prediction = model.forward(features)
-        predicted_label = labels[np.argmax(prediction)]
+        predicted_label = LABELS[np.argmax(prediction)]
 
         if true_label == predicted_label:
             num_correct += 1
@@ -90,8 +89,7 @@ def make_prediction(x):
     x = np.array(x, dtype=float).reshape(-1, 1)
     model = load_model()
     prediction = model.forward(x)
-    labels = ["Dubai", "Rio de Janeiro", "New York City", "Paris"]
-    predicted_label = labels[np.argmax(prediction)]
+    predicted_label = LABELS[np.argmax(prediction)]
 
     return predicted_label
 
@@ -100,22 +98,20 @@ def predict_all_samples(filename):
     Make predictions for all data samples in the specified file.
     """
     model = load_model()
-    labels = ["Dubai", "Rio de Janeiro", "New York City", "Paris"]
-
     features = retreive_data(filename)
 
     predictions = []
     for data_point in features:
         features = np.array(data_point, dtype=float).reshape(-1, 1)
         pred = model.forward(features)
-        predicted_label = labels[np.argmax(pred)]
+        predicted_label = LABELS[np.argmax(pred)]
         predictions.append(predicted_label)
 
     return predictions
 
 # Example usage
 print(predict_all_samples("./clean_dataset.csv"))
-x_train, _, _, _ = get_data()
+x_train, _, _, _ = retreive_file_data()
 print(make_prediction(x_train[0]))
 
 model = load_model()

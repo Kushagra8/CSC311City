@@ -199,7 +199,7 @@ It's designed to be used for obtaining data from a file without labels for
 inference or prediction tasks.
 '''
 
-def get_data(file_name):
+def retreive_file_data(file_name):
 
     data = pd.read_csv(file_name)
 
@@ -253,7 +253,7 @@ function with the path to a CSV file as an argument, which triggers the
 data preprocessing steps and returns the processed data.
 '''
 
-get_data("./clean_dataset.csv")
+retreive_file_data("./clean_dataset.csv")
 
 '''
 Overall, this code prepares a dataset for training a machine learning model 
