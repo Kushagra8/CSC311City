@@ -2,64 +2,119 @@ import pandas as pd
 import numpy as np
 from data_parsing import retreive_file_data, retreive_data
 
+# List of city labels
 LABELS = ["Dubai", "Rio de Janeiro", "New York City", "Paris"]
 
-class MultiLayerPerceptron:
-    def __init__(self, num_features=138, num_hidden=(300, 300, 300, 300), num_classes=4, activation="logistic"):
+class MLPModel:
+    def __init__(self, num_features=138, hidden_units=(300, 300, 300, 300), num_classes=4, activation="logistic"):
         """
-        Initialize the weights and biases of this multi-layer perceptron.
+        Initialize weights and biases of multi-layer perceptron.
         """
         self.num_features = num_features
-        self.num_hidden = num_hidden
+        self.hidden_units = hidden_units
         self.num_classes = num_classes
-        self.num_layers = len(num_hidden) + 1
+        self.num_layers = len(hidden_units) + 1
         self.activation = activation
 
         # Initialize weights for all layers
-        self.layer_matrices = self._initialize_weights()
+        self.layer_weights = self._initialize_weights()
 
     def _initialize_weights(self):
         """
-        Initialize the weight matrices for all layers.
+        Initialize weight matrices for all layers.
         """
-        layer_matrices = []
+        layer_weights = []
 
         # Add weights for input layer
-        input_layer_weights = np.zeros((self.num_hidden[0], self.num_features))
-        layer_matrices.append(input_layer_weights)
+        input_weights = np.zeros((self.hidden_units[0], self.num_features))
+        layer_weights.append(input_weights)
 
         # Add weights for hidden layers
-        for hidden_layer_index in range(len(self.num_hidden) - 1):
-            hidden_layer_weights = np.zeros((self.num_hidden[hidden_layer_index + 1], self.num_hidden[hidden_layer_index]))
-            layer_matrices.append(hidden_layer_weights)
+        for i in range(len(self.hidden_units) - 1):
+            hidden_weights = np.zeros((self.hidden_units[i + 1], self.hidden_units[i]))
+            layer_weights.append(hidden_weights)
 
         # Add weights for output layer
-        output_layer_weights = np.zeros((self.num_classes, self.num_hidden[-1]))
-        layer_matrices.append(output_layer_weights)
+        output_weights = np.zeros((self.num_classes, self.hidden_units[-1]))
+        layer_weights.append(output_weights)
 
         # Read weights from files and set into matrices
-        self._read_weights_from_files(layer_matrices)
+        self._read_weights_from_files(layer_weights)
 
-        return layer_matrices
+        return layer_weights
     
     def sigmoid_activation(self, z):
         """
-        Compute sigmoid activation function for vector z or row-wise for a matrix z.
+        Compute sigmoid activation function for vector z / row-wise for matrix z.
         """
         return 1 / (1 + np.exp(-z))
 
     def forward(self, X):
         """
-        Compute forward pass to produce predictions for inputs.
+        Compute the forward pass to produce prediction for inputs.
+
+        Parameters:
+            `X` - A numpy array of shape (N, self.num_features)
+
+        Returns: A numpy array of predictions of shape (N, self.num_classes)
         """
-        activation_fn = self.sigmoid_activation if self.activation == "logistic" else None
 
-        # Forward pass through network layers
-        value = X
-        for weights in self.layer_weights:
-            value = activation_fn(weights @ value)
+        act = None
+        if self.activation == "logistic":
+            act = self.sigmoid_activation
 
-        return value
+        assert len(self.layer_weights) >= 2
+
+        # Check if the number of features in input X matches the expected number of features
+        assert X.shape[1] == self.num_features, "Number of features in input does not match model's num_features."
+
+        # First Layer
+        value = act(self.layer_weights[0] @ X.T)
+
+        # Deep Layers
+        for i in range(self.num_layers - 2):
+            value = act(self.layer_weights[i+1] @ value)
+
+        # Last Layer
+        value = act(self.layer_weights[-1] @ value)
+
+        return value.T
+
+    def _read_weights_from_files(self, layer_weights):
+        '''
+        Read weights from files and set into weight matrices.
+        '''
+        # Loop through each layer's weight matrix
+        for i, weights in enumerate(layer_weights):
+            # Open file containing weights for current layer
+            with open(f"FinalMLPModel/Weights/Layer{i}weights.txt", "r") as f:
+                # Initialize variables
+                col_index = 0  # Represents current column index
+                col_values = []  # Holds weights for current column
+                
+                # Loop through each line in file
+                for line in f.readlines():
+                    # Check if line represents node
+                    if "Node " in line:
+                        # If weights already in there, assign to weight matrix
+                        if col_values:
+                            # Ensure num of weights matches number of rows in matrix
+                            assert len(col_values) == weights.shape[0]
+
+                            # Assign weights to current column in matrix
+                            weights[:, col_index] = col_values
+                            col_values = []  # Reset column values for next column
+                        
+                        # Extract node num from line and convert it to an int
+                        node_num = int(line[len("Node "):-3])
+                        col_index = node_num  # Set column index for current node
+                    else:
+                        # Strip whitespace and remove leading/trailing '[' and ']' characters
+                        line = line.strip().lstrip("[").rstrip("]")
+
+                        # Split line into individual nums and convert to floats
+                        nums = [float(n) for n in line.split() if n]
+                        col_values.extend(nums)  # Add weights to column values list
 
 def run_tests(model):
     # Get training data from data_parsing module
@@ -85,8 +140,8 @@ def run_tests(model):
     print("Accuracy:", num_correct / total_samples)
 
 def load_model():
-    # Load hyperparameters from a file
-    with open("./Weights/Hyperparameters.txt", "r") as f:
+    # Load hyperparameters from file
+    with open("FinalMLPModel/Weights/Hyperparameters.txt", "r") as f:
         hidden_units = eval(f.readline().strip().split(": ")[1])
         num_features = eval(f.readline().strip().split(": ")[1])
     
@@ -96,7 +151,7 @@ def load_model():
 
 def make_prediction(x):
     """
-    Make a prediction for a given input x.
+    Make prediction for given input x.
     """
     x = np.array(x, dtype=float).reshape(-1, 1)
     model = load_model()
@@ -120,7 +175,7 @@ def predict_all(filename):
         model_preds.append(predicted_label)
 
     return model_preds
-'''
+
 # Example usage
 print(predict_all("./clean_dataset.csv"))
 x_train, y_train, x_test, y_test = retreive_file_data()
@@ -128,4 +183,3 @@ print(make_prediction(x_train[0]))
 
 model = load_model()
 run_tests(model)
-'''

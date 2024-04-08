@@ -119,7 +119,7 @@ and prepares the features (x) and labels (y) for training the model.
 It also splits the data into training and testing sets.
 '''
 
-def retreive_data():
+def retreive_data(data_set):
 
     data = pd.read_csv(data_set)
 
