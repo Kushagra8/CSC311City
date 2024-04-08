@@ -10,12 +10,13 @@ class MLPModel:
         """
         Initialize weights and biases of multi-layer perceptron.
         """
+        self.activation = activation
+        self.num_layers = len(hidden_units) + 1
+
         self.num_features = num_features
         self.hidden_units = hidden_units
         self.num_classes = num_classes
-        self.num_layers = len(hidden_units) + 1
-        self.activation = activation
-
+        
         # Initialize weights for all layers
         self.layer_weights = self._initialize_weights()
 
@@ -63,8 +64,6 @@ class MLPModel:
         if self.activation == "logistic":
             act = self.sigmoid_activation
 
-        assert len(self.layer_weights) >= 2
-
         # SIZE ERROR
         # First Layer
         value = act(self.layer_weights[0] @ X.T)
@@ -75,6 +74,10 @@ class MLPModel:
 
         # Last Layer
         value = act(self.layer_weights[-1] @ value)
+
+
+
+
 
         return value.T
 
